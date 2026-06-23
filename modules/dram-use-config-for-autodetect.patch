@@ -1,0 +1,43 @@
+diff --git a/arch/arm/mach-sunxi/dram_sun55i_a523.c b/arch/arm/mach-sunxi/dram_sun55i_a523.c
+index 1ffb6286..027085e5 100644
+--- a/arch/arm/mach-sunxi/dram_sun55i_a523.c
++++ b/arch/arm/mach-sunxi/dram_sun55i_a523.c
+@@ -1474,22 +1474,10 @@ unsigned long sunxi_dram_init(void)
+ 	unsigned long size;
+ 
+ 	config.clk = 360;
+-	switch (para.type) {
+-	case SUNXI_DRAM_TYPE_DDR3:
+-		config.odt_en = 0x90909090;
+-		config.tpr11 = 0x8f919190;
+-		config.tpr12 = 0x22222723;
+-		config.tpr14 = 0x48484848;
+-		break;
+-	case SUNXI_DRAM_TYPE_LPDDR4:
+-		config.odt_en = 0x84848484;
+-		config.tpr11 = 0x9a9a9a9a;
+-		config.tpr12 = 0x0e0f070a;
+-		config.tpr14 = 0x48484848;
+-		break;
+-	default:
+-		panic("This DRAM setup is currently not supported.\n");
+-	};
++	config.odt_en = CONFIG_DRAM_SUNXI_ODT_EN;
++	config.tpr11 = CONFIG_DRAM_SUNXI_TPR11;
++	config.tpr12 = CONFIG_DRAM_SUNXI_TPR12;
++	config.tpr14 = CONFIG_DRAM_SUNXI_TPR14;
+ 
+ 	setbits_le32(0x03000160, BIT(8));
+ 	clrbits_le32(0x03000168, 0x3f);
+@@ -1498,11 +1486,6 @@ unsigned long sunxi_dram_init(void)
+ 	mctl_auto_detect_dram_size(&para, &config);
+ 
+ 	config.clk = CONFIG_DRAM_CLK;
+-	config.odt_en = CONFIG_DRAM_SUNXI_ODT_EN;
+-	config.tpr11 = CONFIG_DRAM_SUNXI_TPR11;
+-	config.tpr12 = CONFIG_DRAM_SUNXI_TPR12;
+-	config.tpr14 = CONFIG_DRAM_SUNXI_TPR14;
+-
+ 	mctl_core_init(&para, &config);
+ 
+ 	size = mctl_calc_size(&config);

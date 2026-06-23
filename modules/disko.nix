@@ -5,47 +5,14 @@
   ...
 }:
 let
-  armTrustedFirmwareSun55i = pkgs.buildPackages.buildArmTrustedFirmware rec {
-    platform = "sun55i_a523";
-    extraMeta.platforms = [ "aarch64-linux" ];
-    filesToInstall = [ "build/${platform}/release/bl31.bin" ];
-    src = pkgs.fetchFromGitHub {
-      owner = "jernejsk";
-      repo = "arm-trusted-firmware";
-      rev = "b5de74a685fb73b784e45bbbd18dd9a0c528d8b2";
-      hash = "sha256-6vD3p/mvKpTusGkehowgrKgdTrp8hzesVsoobTUMS40=";
-    };
-  };
-
-  ubootCubieA5E = pkgs.buildPackages.buildUBoot {
-    defconfig = "radxa-cubie-a5e_defconfig";
-    extraMeta.platforms = [ "aarch64-linux" ];
-    env.BL31 = "${armTrustedFirmwareSun55i}/bl31.bin";
-    filesToInstall = [ "u-boot-sunxi-with-spl.bin" ];
-  };
-
-  ubootFirmware = pkgs.buildPackages.stdenv.mkDerivation {
-    pname = "u-boot-radxa-cubie-a5e";
-    version = "2018.07-17";
-    src = pkgs.fetchurl {
-      url = "https://github.com/radxa-pkg/u-boot-aw2501/releases/download/2018.07-17/u-boot-aw2501_2018.07-17_all.deb";
-      hash = "sha256-hM2IV20KDh8TR8v0cyUe4f1RFk5E8sOh+OV/v0pyuok=";
-    };
-    nativeBuildInputs = [ pkgs.buildPackages.dpkg ];
-    unpackPhase = "dpkg-deb -x $src .";
-    installPhase = ''
-      mkdir -p $out
-      cp usr/lib/u-boot/radxa-cubie-a5e/boot0_sdcard.bin $out/
-      cp usr/lib/u-boot/radxa-cubie-a5e/boot_package.fex $out/
-    '';
-  };
+  uboot = import ./uboot.nix { inherit pkgs; };
 in
 {
   options.hardware.cubie-a5e = {
     uboot = lib.mkOption {
-      type = lib.types.enum [ "vendor" "mainline" ];
+      type = lib.types.enum [ "vendor" "mainline-1gb" "mainline-2gb+" ];
       default = "vendor";
-      description = "U-Boot variant: 'vendor' (Radxa/Allwinner) or 'mainline' (requires WIP TF-A)";
+      description = "U-Boot variant: 'vendor' (Radxa/Allwinner), 'mainline-1gb' (1GB LPDDR4), or 'mainline-2gb+' (2GB/4GB LPDDR4x)";
     };
   };
 
@@ -64,11 +31,14 @@ in
     # Write U-Boot to raw disk after image build
     disko.imageBuilder.extraPostVM = lib.mkMerge [
       (lib.mkIf (config.hardware.cubie-a5e.uboot == "vendor") ''
-        dd if=${ubootFirmware}/boot0_sdcard.bin of="$out"/main.raw bs=512 seek=256 conv=notrunc
-        dd if=${ubootFirmware}/boot_package.fex of="$out"/main.raw bs=512 seek=24576 conv=notrunc
+        dd if=${uboot.vendor}/boot0_sdcard.bin of="$out"/main.raw bs=512 seek=256 conv=notrunc
+        dd if=${uboot.vendor}/boot_package.fex of="$out"/main.raw bs=512 seek=24576 conv=notrunc
       '')
-      (lib.mkIf (config.hardware.cubie-a5e.uboot == "mainline") ''
-        dd if=${ubootCubieA5E}/u-boot-sunxi-with-spl.bin of="$out"/main.raw bs=1k seek=128 conv=notrunc
+      (lib.mkIf (config.hardware.cubie-a5e.uboot == "mainline-2gb+") ''
+        dd if=${uboot.mainline-2gb}/u-boot-sunxi-with-spl.bin of="$out"/main.raw bs=1k seek=128 conv=notrunc
+      '')
+      (lib.mkIf (config.hardware.cubie-a5e.uboot == "mainline-1gb") ''
+        dd if=${uboot.mainline-1gb}/u-boot-sunxi-with-spl.bin of="$out"/main.raw bs=1k seek=128 conv=notrunc
       '')
     ];
 

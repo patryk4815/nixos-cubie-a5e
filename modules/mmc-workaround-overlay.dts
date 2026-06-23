@@ -1,0 +1,15 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "radxa,cubie-a5e", "allwinner,sun55i-a527";
+
+	/* Limit SD card speed to avoid sunxi-mmc timeout on kernel reinit */
+	fragment@0 {
+		target = <&mmc0>;
+		__overlay__ {
+			max-frequency = <25000000>;
+			no-1-8-v;
+		};
+	};
+};

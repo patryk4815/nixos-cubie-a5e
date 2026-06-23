@@ -68,13 +68,20 @@ Add to your `flake.nix` inputs:
 Build SD card image (pre-configured example with root/nixos login):
 
 ```bash
+# Vendor U-Boot (default)
 nix build '.#nixosConfigurations.cubie-a5e.config.system.build.diskoImagesScript' -L
-./result
+
+# Mainline U-Boot - 1GB model (LPDDR4)
+nix build '.#nixosConfigurations.cubie-a5e-mainline-1gb.config.system.build.diskoImagesScript' -L
+
+# Mainline U-Boot - 2GB/4GB model (LPDDR4x)
+nix build '.#nixosConfigurations.cubie-a5e-mainline-2gb.config.system.build.diskoImagesScript' -L
 ```
 
-This produces `main.raw` in the current directory. Flash to SD card:
+Then run the script and flash:
 
 ```bash
+./result
 sudo dd if=main.raw of=/dev/sdX bs=4M status=progress
 ```
 
@@ -119,11 +126,18 @@ LVM volume group `root_vg` with single logical volume `root` formatted as **btrf
 
 ## U-Boot
 
-Default is **vendor** U-Boot from Radxa (`u-boot-aw2501` package).
+Three variants available via `hardware.cubie-a5e.uboot`:
 
-> **Note:** `hardware.cubie-a5e.uboot = "mainline"` is available but **does not boot** currently.
-> Mainline U-Boot builds with WIP TF-A from [jernejsk/arm-trusted-firmware](https://github.com/jernejsk/arm-trusted-firmware) (branch `a523`),
-> but fails to start. Root cause is under investigation.
+| Variant | Description |
+|---------|-------------|
+| `"vendor"` (default) | Radxa vendor U-Boot (`u-boot-aw2501` package) |
+| `"mainline-1gb"` | Mainline U-Boot for **1GB** model (LPDDR4, 1.1V VDDQ) + SPI NOR |
+| `"mainline-2gb+"` | Mainline U-Boot for **2GB/4GB** models (LPDDR4x, 0.6V VDDQ) + SPI NOR |
+
+Mainline U-Boot uses TF-A from [jernejsk/arm-trusted-firmware](https://github.com/jernejsk/arm-trusted-firmware) (branch `a523-v4`).
+The 1GB variant applies [DRAM timing patch](https://gist.github.com/apritzel/01b5afcae189cf3c34c4256dafa3f60d) from Andre Przywara (not yet upstream).
+
+> **Warning:** 1GB and 2GB/4GB models use different DRAM chips with incompatible timings. Using the wrong variant will fail to boot.
 
 ## Hardware support status
 

@@ -8,13 +8,18 @@ in
 
     watchdog-reboot = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = false;
       description = "Enable watchdog-based reboot workaround for WIP TF-A (no PSCI SYSTEM_RESET)";
     };
   };
 
   config = lib.mkIf cfg.enable {
     hardware.aic8800.enable = true;
+
+    hardware.deviceTree.overlays = [{
+      name = "cubie-a5e-mmc-workaround";
+      dtsFile = ./mmc-workaround-overlay.dts;
+    }];
 
     # Hardware watchdog for reliable reboot/shutdown detection
     systemd.settings.Manager = {

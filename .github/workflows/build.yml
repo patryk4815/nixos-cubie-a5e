@@ -1,4 +1,4 @@
-name: Build SD card image
+name: Build SD card and SPI NOR images
 
 on:
   push:
@@ -6,8 +6,17 @@ on:
       - 'v*'
 
 jobs:
-  build:
+  sd-image:
     runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        variant:
+          - name: cubie-a5e
+            image: cubie-a5e-vendor
+          - name: cubie-a5e-mainline-1gb
+            image: cubie-a5e-mainline-1gb
+          - name: cubie-a5e-mainline-2gb
+            image: cubie-a5e-mainline-2gb
 
     steps:
       - uses: actions/checkout@v4
@@ -15,15 +24,39 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
 
       - name: Build disko image script
-        run: nix build '.#nixosConfigurations.cubie-a5e.config.system.build.diskoImagesScript' -L
+        run: nix build '.#nixosConfigurations.${{ matrix.variant.name }}.config.system.build.diskoImagesScript' -L
 
       - name: Generate disk image
         run: ./result
 
       - name: Compress image
-        run: zstd -T0 main.raw -o main.raw.zst
+        run: zstd -T0 main.raw -o ${{ matrix.variant.image }}.raw.zst
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: main.raw.zst
+          files: ${{ matrix.variant.image }}.raw.zst
+
+  spinor:
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        variant:
+          - pkg: spinor-1gb
+          - pkg: spinor-2gb
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Build SPI NOR image
+        run: nix build '.#${{ matrix.variant.pkg }}' -L
+
+      - name: Compress image
+        run: zstd -T0 result -o ${{ matrix.variant.pkg }}.img.zst
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.variant.pkg }}.img.zst

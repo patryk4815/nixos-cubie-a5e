@@ -13,10 +13,28 @@ let
     };
   };
 
-  mkUboot = defconfig: extraPatches: pkgs.buildPackages.buildUBoot {
+  mkUboot = defconfig: extraPatches: extraConfig: pkgs.buildPackages.buildUBoot {
     inherit defconfig extraPatches;
     extraMeta.platforms = [ "aarch64-linux" ];
     env.BL31 = "${armTrustedFirmwareSun55i}/bl31.bin";
+    extraConfig = ''
+      CONFIG_CMD_MEMTEST=y
+      CONFIG_MTD=y
+      CONFIG_SPI_FLASH_WINBOND=y
+      CONFIG_SPI_FLASH_XMC=y
+      CONFIG_SPI=y
+      CONFIG_SPL_SPI_SUNXI=y
+      CONFIG_PCI=y
+      CONFIG_PCI_INIT_R=y
+      CONFIG_PCIE_DW_COMMON=y
+      CONFIG_PCIE_SUN55I_RC=y
+      CONFIG_PHY_SUN55I_PCIE_USB3=y
+      CONFIG_NVME_PCI=y
+      CONFIG_CMD_NVME=y
+      CONFIG_CMD_PCI=y
+      CONFIG_USB_STORAGE=y
+      CONFIG_LOGLEVEL=7
+    '' + extraConfig;
     filesToInstall = [ "u-boot-sunxi-with-spl.bin" ];
   };
 
@@ -39,15 +57,49 @@ let
     installPhase = ''
       mkdir -p $out
       cp usr/lib/u-boot/radxa-cubie-a5e/boot0_sdcard.bin $out/
+      cp usr/lib/u-boot/radxa-cubie-a5e/boot0_spinor.bin $out/
       cp usr/lib/u-boot/radxa-cubie-a5e/boot_package.fex $out/
+      cp usr/lib/u-boot/radxa-cubie-a5e/sys_partition_nor.bin $out/
     '';
   };
 
-  mainline-1gb = mkUboot "radxa-cubie-a5e-1gb_defconfig" [ ./radxa-cubie-a5e-1gb-defconfig.patch ];
-  mainline-2gb = mkUboot "radxa-cubie-a5e_defconfig" [ ./radxa-cubie-a5e-spi-nor.patch ];
-in {
-  inherit vendor mainline-1gb mainline-2gb;
+  spiPatches = [
+    ./patches/uboot/a523-spi-1-driver.patch
+    ./patches/uboot/a523-spi-2-spl-cleanup.patch
+    ./patches/uboot/a523-spi-dts.patch
+    ./patches/uboot/armbian-pcie-1-dw-driver.patch
+    ./patches/uboot/armbian-pcie-2-combophy.patch
+    ./patches/uboot/armbian-pcie-3-clocks.patch
+    ./patches/uboot/armbian-pcie-4-dtsi-nodes.patch
+    ./patches/uboot/armbian-pcie-5-cubie-a5e-dts.patch
+  ];
 
+  mainline-1gb = mkUboot "radxa-cubie-a5e_defconfig" spiPatches ''
+    CONFIG_DRAM_SUNXI_TPR2=0x1f0b0503
+    CONFIG_DRAM_SUNXI_TPR6=0x3a000000
+    CONFIG_DRAM_CLK=720
+    CONFIG_DRAM_SUNXI_TPR10=0x802f3333
+    CONFIG_DRAM_SUNXI_TPR11=0xc0c0bbbf
+    CONFIG_DRAM_SUNXI_TPR12=0x35352f31
+  '';
+  mainline-2gb = mkUboot "radxa-cubie-a5e_defconfig" spiPatches "";
+in {
+  inherit mainline-1gb mainline-2gb;
+
+  vendor = pkgs.buildPackages.runCommand "cubie-a5e-vendor-uboot" {} ''
+    mkdir -p $out
+    # boot0 at offset 0 → maps to sector 256 (128KB) when dd'd with bs=1k seek=128
+    # boot_package at relative sector 24320 (= 24576 - 256)
+    dd if=${vendor}/boot0_sdcard.bin of=$out/u-boot-sunxi-with-spl.bin bs=512 conv=notrunc
+    dd if=${vendor}/boot_package.fex of=$out/u-boot-sunxi-with-spl.bin bs=512 seek=$((24576 - 256)) conv=notrunc
+  '';
+
+  spinor-vendor = pkgs.buildPackages.runCommand "cubie-a5e-vendor-spinor.img" {} ''
+    dd if=/dev/zero of=$out bs=1M count=${toString spiNorImageSize}
+    dd if=${vendor}/boot0_spinor.bin of=$out bs=512 conv=notrunc
+    dd if=${vendor}/boot_package.fex of=$out bs=512 seek=128 conv=notrunc
+    dd if=${vendor}/sys_partition_nor.bin of=$out bs=512 seek=2016 conv=notrunc
+  '';
   spinor-1gb = mkSpiNorImage "cubie-a5e-1gb" mainline-1gb;
   spinor-2gb = mkSpiNorImage "cubie-a5e-2gb" mainline-2gb;
 }

@@ -69,13 +69,13 @@ Build SD card image (pre-configured example with root/nixos login):
 
 ```bash
 # Vendor U-Boot (default)
-nix build '.#nixosConfigurations.cubie-a5e.config.system.build.diskoImagesScript' -L
+nix build '.#nixosConfigurations.cubie-a5e-sd-vendor.config.system.build.diskoImagesScript' -L
 
 # Mainline U-Boot - 1GB model (LPDDR4)
-nix build '.#nixosConfigurations.cubie-a5e-mainline-1gb.config.system.build.diskoImagesScript' -L
+nix build '.#nixosConfigurations.cubie-a5e-sd-mainline-1gb.config.system.build.diskoImagesScript' -L
 
 # Mainline U-Boot - 2GB/4GB model (LPDDR4x)
-nix build '.#nixosConfigurations.cubie-a5e-mainline-2gb.config.system.build.diskoImagesScript' -L
+nix build '.#nixosConfigurations.cubie-a5e-sd-mainline-2gb.config.system.build.diskoImagesScript' -L
 ```
 
 Then run the script and flash:
@@ -131,13 +131,52 @@ Three variants available via `hardware.cubie-a5e.uboot`:
 | Variant | Description |
 |---------|-------------|
 | `"vendor"` (default) | Radxa vendor U-Boot (`u-boot-aw2501` package) |
-| `"mainline-1gb"` | Mainline U-Boot for **1GB** model (LPDDR4, 1.1V VDDQ) + SPI NOR |
-| `"mainline-2gb+"` | Mainline U-Boot for **2GB/4GB** models (LPDDR4x, 0.6V VDDQ) + SPI NOR |
+| `"mainline-1gb"` | Mainline U-Boot for **1GB** model (LPDDR4, 1.1V VDDQ) + SPI NOR + PCIe/NVMe |
+| `"mainline-2gb+"` | Mainline U-Boot for **2GB/4GB** models (LPDDR4x, 0.6V VDDQ) + SPI NOR + PCIe/NVMe |
 
 Mainline U-Boot uses TF-A from [jernejsk/arm-trusted-firmware](https://github.com/jernejsk/arm-trusted-firmware) (branch `a523-v4`).
 The 1GB variant applies [DRAM timing patch](https://gist.github.com/apritzel/01b5afcae189cf3c34c4256dafa3f60d) from Andre Przywara (not yet upstream).
+PCIe/NVMe support uses patches from [Armbian](https://github.com/armbian/build) (DesignWare PCIe controller + Innosilicon combo PHY).
 
 > **Warning:** 1GB and 2GB/4GB models use different DRAM chips with incompatible timings. Using the wrong variant will fail to boot.
+
+## SPI NOR flashing
+
+U-Boot can be flashed to SPI NOR via USB FEL mode. Requires `sunxi-tools` built from master (nixpkgs has it).
+
+Build the SPI NOR image:
+
+```bash
+nix build .#spinor-1gb   # or .#spinor-2gb
+nix build .#uboot-1gb    # just the U-Boot binary
+```
+
+Enter FEL mode by powering the board via USB-C without an SD card. Verify with:
+
+```bash
+sunxi-fel ver
+# AWUSBFEX soc=00001890(A523) ...
+```
+
+Load U-Boot into RAM, write the SPI image to DRAM, and start U-Boot:
+
+```bash
+sunxi-fel spl ./result/u-boot-sunxi-with-spl.bin \
+  write 0x50000000 ./1gb-spinor.img \
+  exe 0x4a000000
+```
+
+Then on UART (115200 baud), flash SPI NOR:
+
+```
+sf probe
+sf update 0x50000000 0 0x1000000
+reset
+```
+
+After reset the board boots from SPI NOR (`Trying to boot from sunxi SPI`).
+
+> **Note:** `sunxi-fel spiflash-write` is not yet supported for A523. The workaround above loads U-Boot via FEL into RAM and uses U-Boot's `sf` commands to flash.
 
 ## Hardware support status
 
@@ -148,8 +187,8 @@ The 1GB variant applies [DRAM timing patch](https://gist.github.com/apritzel/01b
 | Ethernet (RJ45 x2) | ✅ Working | Both GbE ports |
 | SD card | ✅ Working | Boot + rootfs |
 | USB 2.0 | ✅ Working | |
-| USB 3.0 | ❌ Not working | Missing combo PHY + xHCI DT nodes in mainline, port falls back to USB 2.0 speed |
-| M.2 slot (PCIe) | ❌ Not working | Shares lane with USB 3.0 via combo PHY, not yet in mainline DT |
+| USB 3.0 | ❌ Not working | Missing xHCI DT nodes in mainline, port falls back to USB 2.0 speed |
+| M.2 slot (PCIe) | ✅ Working | PCIe Gen2 x1 via combo PHY, NVMe detected in U-Boot |
 | HDMI | ❌ Not working | Requires display engine drivers not yet in mainline |
 | MIPI DSI | ❌ Not working | Missing mainline support/drivers |
 | MIPI CSI | ❌ Not working | Missing mainline support/drivers |
@@ -160,13 +199,25 @@ The 1GB variant applies [DRAM timing patch](https://gist.github.com/apritzel/01b
 | eMMC | 🔘 Not tested | Likely works |
 
 
+## Boot from SPI NOR + NVMe
+
+For booting from NVMe, flash U-Boot to SPI NOR and use the `cubie-a5e-spi` configuration (no U-Boot gap on disk, partition starts at sector 0).
+
+Build the SPI NOR image and U-Boot binary:
+
+```bash
+nix build .#spinor-1gb   # or .#spinor-2gb, .#spinor-vendor
+nix build .#uboot-1gb    # just the U-Boot binary
+```
+
+See [SPI NOR flashing](#spi-nor-flashing) for flashing instructions.
+
 ## Known issues
 
-- **Mainline U-Boot does not boot** - use vendor U-Boot (default)
 - **PSCI SYSTEM_RESET not implemented** in vendor TF-A - `watchdog-reboot-helper` service crashes kernel on shutdown so hardware watchdog triggers reboot
 - **Only SD card boot** - eMMC/USB boot not tested
 
 ## Tested on
 
-- NixOS 25.11 + kernel 7.0
+- NixOS 26.05 + kernel 7.0
 - Radxa Cubie A5E with AIC8800D80 WiFi/BT chip

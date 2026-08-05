@@ -9,6 +9,7 @@
 
   outputs = { self, nixpkgs, nixpkgs_25_11, disko, ... }: let
     pkgs = nixpkgs.legacyPackages.aarch64-linux;
+    nixpkgs-unstable = builtins.getFlake "github:NixOS/nixpkgs/104240a772428cc2e20d8fd86c9ddbb886bbaff2?narHash=sha256-D740uKsMbgsfK2oaDenJLLPIZfq7W0/g4KN/Fls8eKs%3D"; # 2026-08-03
   in {
     nixosModules = {
       aic8800 = ./modules/aic8800-sdio.nix;
@@ -38,13 +39,21 @@
       };
     };
 
-    packages.aarch64-linux = let
+    packages = let
       uboot = import ./modules/uboot.nix { inherit pkgs; };
-    in {
-      uboot-1gb = uboot.mainline-1gb;
-      uboot-2gb = uboot.mainline-2gb;
-      spinor-1gb = uboot.spinor-1gb;
-      spinor-2gb = uboot.spinor-2gb;
+      forAllSystems = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
+    in forAllSystems (system: {
+      sunxi-fel = nixpkgs-unstable.legacyPackages.${system}.sunxi-tools;
+    }) // {
+      aarch64-linux = {
+        sunxi-fel = nixpkgs-unstable.legacyPackages.aarch64-linux.sunxi-tools;
+        uboot-vendor = uboot.vendor;
+        uboot-1gb = uboot.mainline-1gb;
+        uboot-2gb = uboot.mainline-2gb;
+        spinor-vendor = uboot.spinor-vendor;
+        spinor-1gb = uboot.spinor-1gb;
+        spinor-2gb = uboot.spinor-2gb;
+      };
     };
 
     nixosConfigurations = let
@@ -71,9 +80,10 @@
         ];
       };
     in {
-      cubie-a5e = mkCubieA5E "vendor";
-      cubie-a5e-mainline-1gb = mkCubieA5E "mainline-1gb";
-      cubie-a5e-mainline-2gb = mkCubieA5E "mainline-2gb+";
+      cubie-a5e-sd-vendor = mkCubieA5E "vendor";
+      cubie-a5e-sd-mainline-1gb = mkCubieA5E "mainline-1gb";
+      cubie-a5e-sd-mainline-2gb = mkCubieA5E "mainline-2gb+";
+      cubie-a5e-spi = mkCubieA5E "none";
     };
   };
 }

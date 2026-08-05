@@ -10,9 +10,9 @@ in
 {
   options.hardware.cubie-a5e = {
     uboot = lib.mkOption {
-      type = lib.types.enum [ "vendor" "mainline-1gb" "mainline-2gb+" ];
+      type = lib.types.enum [ "none" "vendor" "mainline-1gb" "mainline-2gb+" ];
       default = "vendor";
-      description = "U-Boot variant: 'vendor' (Radxa/Allwinner), 'mainline-1gb' (1GB LPDDR4), or 'mainline-2gb+' (2GB/4GB LPDDR4x)";
+      description = "U-Boot variant: 'none' (SPI NOR boot), 'vendor' (Radxa/Allwinner), 'mainline-1gb' (1GB LPDDR4), or 'mainline-2gb+' (2GB/4GB LPDDR4x)";
     };
   };
 
@@ -28,11 +28,10 @@ in
     boot.loader.generic-extlinux-compatible.enable = true;
     boot.loader.generic-extlinux-compatible.configurationLimit = 4;
 
-    # Write U-Boot to raw disk after image build
-    disko.imageBuilder.extraPostVM = lib.mkMerge [
+    # Write U-Boot to raw disk after image build (skip when booting from SPI NOR)
+    disko.imageBuilder.extraPostVM = lib.mkIf (config.hardware.cubie-a5e.uboot != "none") (lib.mkMerge [
       (lib.mkIf (config.hardware.cubie-a5e.uboot == "vendor") ''
-        dd if=${uboot.vendor}/boot0_sdcard.bin of="$out"/main.raw bs=512 seek=256 conv=notrunc
-        dd if=${uboot.vendor}/boot_package.fex of="$out"/main.raw bs=512 seek=24576 conv=notrunc
+        dd if=${uboot.vendor}/u-boot-sunxi-with-spl.bin of="$out"/main.raw bs=1k seek=128 conv=notrunc
       '')
       (lib.mkIf (config.hardware.cubie-a5e.uboot == "mainline-2gb+") ''
         dd if=${uboot.mainline-2gb}/u-boot-sunxi-with-spl.bin of="$out"/main.raw bs=1k seek=128 conv=notrunc
@@ -40,7 +39,7 @@ in
       (lib.mkIf (config.hardware.cubie-a5e.uboot == "mainline-1gb") ''
         dd if=${uboot.mainline-1gb}/u-boot-sunxi-with-spl.bin of="$out"/main.raw bs=1k seek=128 conv=notrunc
       '')
-    ];
+    ]);
 
     disko.devices = {
       disk.main = {
@@ -50,16 +49,16 @@ in
         content = {
           type = "gpt";
           partitions = {
-            # First partition starts at sector 32768 (16MB) to not overlap with U-Boot
             boot = {
               size = "2G";
               type = "8300";
-              start = "32768";
               content = {
                 type = "filesystem";
                 format = "ext4";
                 mountpoint = "/boot";
               };
+            } // lib.optionalAttrs (config.hardware.cubie-a5e.uboot != "none") {
+              start = "32768";
             };
             root = {
               name = "root";

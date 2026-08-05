@@ -19,11 +19,11 @@ in
     boot.kernelPatches = [
       # Thermal sensor support (THS0/THS1) - backported from upstream
       # https://patchew.org/linux/20260704171411.1413349-1-iuncuim@gmail.com/
-      { name = "sun55i-a523-thermal-1-dt-bindings"; patch = ./patches/0001-dt-bindings-thermal-sun8i-add-a523-ths.patch; }
-      { name = "sun55i-a523-thermal-2-reset-control-shared"; patch = ./patches/0002-thermal-sun8i-reset-control-shared-deasserted.patch; }
-      { name = "sun55i-a523-thermal-3-two-nvmem-cells"; patch = ./patches/0003-thermal-sun8i-calibration-two-nvmem-cells.patch; }
-      { name = "sun55i-a523-thermal-4-ths0-ths1-driver"; patch = ./patches/0004-thermal-sun8i-add-a523-ths0-ths1-support.patch; }
-      { name = "sun55i-a523-thermal-5-dts-sensors-zones"; patch = ./patches/0005-arm64-dts-allwinner-sun55i-add-thermal-sensors.patch; }
+      { name = "sun55i-a523-thermal-1-dt-bindings"; patch = ./patches/kernel/0001-dt-bindings-thermal-sun8i-add-a523-ths.patch; }
+      { name = "sun55i-a523-thermal-2-reset-control-shared"; patch = ./patches/kernel/0002-thermal-sun8i-reset-control-shared-deasserted.patch; }
+      { name = "sun55i-a523-thermal-3-two-nvmem-cells"; patch = ./patches/kernel/0003-thermal-sun8i-calibration-two-nvmem-cells.patch; }
+      { name = "sun55i-a523-thermal-4-ths0-ths1-driver"; patch = ./patches/kernel/0004-thermal-sun8i-add-a523-ths0-ths1-support.patch; }
+      { name = "sun55i-a523-thermal-5-dts-sensors-zones"; patch = ./patches/kernel/0005-arm64-dts-allwinner-sun55i-add-thermal-sensors.patch; }
       # PCIe + combo PHY support - from Armbian (Marvin Wewer)
       { name = "a523-clk-usb3-ref"; patch = ./patches/kernel/drv-clk-sunxi-ng-fix-clock-handling-for-ccu-sun55i-a523.patch; }
       { name = "a523-combophy"; patch = ./patches/kernel/drv-phy-allwinner-add-pcie-usb3-driver.patch; }

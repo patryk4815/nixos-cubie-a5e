@@ -14,11 +14,11 @@ diff --git a/drivers/phy/allwinner/Kconfig b/drivers/phy/allwinner/Kconfig
 index 111111111111..222222222222 100644
 --- a/drivers/phy/allwinner/Kconfig
 +++ b/drivers/phy/allwinner/Kconfig
-@@ -67,3 +67,11 @@ config AC200_PHY_CTL
- 	  Enable this to support the Ethernet PHY operation of the AC200
- 	  mixed signal chip. This driver just enables and configures the
- 	  PHY, the PHY itself is supported by a standard driver.
-+  
+@@ -57,3 +57,11 @@ config PHY_SUN50I_USB3
+ 	  part of Allwinner H6 SoC.
+ 
+ 	  This driver controls each individual USB 2+3 host PHY combo.
++
 +config AW_INNO_COMBOPHY
 +	tristate "Allwinner INNO COMBO PHY Driver"
 +	depends on ARCH_SUNXI && OF
@@ -30,10 +30,9 @@ diff --git a/drivers/phy/allwinner/Makefile b/drivers/phy/allwinner/Makefile
 index 111111111111..222222222222 100644
 --- a/drivers/phy/allwinner/Makefile
 +++ b/drivers/phy/allwinner/Makefile
-@@ -4,3 +4,4 @@ obj-$(CONFIG_PHY_SUN6I_MIPI_DPHY)	+= phy-sun6i-mipi-dphy.o
+@@ -4,2 +4,3 @@ obj-$(CONFIG_PHY_SUN6I_MIPI_DPHY)	+= phy-sun6i-mipi-dphy.o
  obj-$(CONFIG_PHY_SUN9I_USB)		+= phy-sun9i-usb.o
  obj-$(CONFIG_PHY_SUN50I_USB3)		+= phy-sun50i-usb3.o
- obj-$(CONFIG_AC200_PHY_CTL)		+= ac200-ephy-ctl.o
 +obj-$(CONFIG_AW_INNO_COMBOPHY)	+= sunxi-inno-combophy.o
 diff --git a/drivers/phy/allwinner/sunxi-inno-combophy.c b/drivers/phy/allwinner/sunxi-inno-combophy.c
 new file mode 100644

@@ -186,6 +186,7 @@ After reset the board boots from SPI NOR (`Trying to boot from sunxi SPI`).
 | Bluetooth 5.4 (AIC8800D80 UART) | ✅ Working | HCI over UART1, out-of-tree driver, hciattach service |
 | Ethernet (RJ45 x2) | ✅ Working | Both GbE ports |
 | SD card | ✅ Working | Boot + rootfs |
+| CPU thermal sensor (THS0/THS1) | ✅ Working | Requires backported patches (see below), not yet in mainline |
 | USB 2.0 | ✅ Working | |
 | USB 3.0 | ❌ Not working | Missing xHCI DT nodes in mainline, port falls back to USB 2.0 speed |
 | M.2 slot (PCIe) | ✅ Working | PCIe Gen2 x1 via combo PHY, NVMe detected in U-Boot |
@@ -211,6 +212,17 @@ nix build .#uboot-1gb    # just the U-Boot binary
 ```
 
 See [SPI NOR flashing](#spi-nor-flashing) for flashing instructions.
+
+## Backported patches
+
+- **CPU thermal sensor (A523 THS0/THS1)** - the mainline `sun8i_thermal` driver does not yet
+  support the A523/A527's actual THS0/THS1 sensor hardware, so `/sys/class/thermal` reports a
+  static, non-updating temperature. This is fixed by backporting the not-yet-merged upstream
+  series ["\[PATCH v5 0/5\] Allwinner: A523: add support for A523 THS0/1 controllers"](https://patchew.org/linux/20260704171411.1413349-1-iuncuim@gmail.com/)
+  by Mikhail Kalashnikov, applied via `boot.kernelPatches` in `modules/cubie-a5e.nix`
+  (patch files in `modules/patches/`). This is automatically enabled whenever
+  `hardware.cubie-a5e.enable = true` and can be dropped once nixpkgs' kernel includes the
+  upstream merge.
 
 ## Known issues
 

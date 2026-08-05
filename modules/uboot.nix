@@ -35,13 +35,6 @@ let
       CONFIG_USB_STORAGE=y
       CONFIG_LOGLEVEL=7
     '' + extraConfig;
-    preBuild = ''
-      cat >> board/sunxi/sunxi.env <<'EOF'
-      bootcmd_nvme0=nvme scan; sysboot nvme 0:1 any 0x4fc00000 /extlinux/extlinux.conf
-      bootcmd_usb0=usb reset; sysboot usb 0:1 any 0x4fc00000 /extlinux/extlinux.conf
-      boot_targets=nvme0 usb0 mmc0
-      EOF
-    '';
     filesToInstall = [ "u-boot-sunxi-with-spl.bin" ];
   };
 
@@ -79,6 +72,10 @@ let
     ./patches/uboot/armbian-pcie-3-clocks.patch
     ./patches/uboot/armbian-pcie-4-dtsi-nodes.patch
     ./patches/uboot/armbian-pcie-5-cubie-a5e-dts.patch
+    # sunxi's BOOT_TARGET_DEVICES has no NVMe entry, so boot_targets ends up as
+    # "fel mmc_auto usb0 pxe dhcp" and NVMe is never tried. distro_bootcmd
+    # already supports NVMe generically (gated on CONFIG_NVME).
+    ./patches/uboot/a523-nvme-boot-target.patch
   ];
 
   mainline-1gb = mkUboot "radxa-cubie-a5e_defconfig" spiPatches ''

@@ -48,7 +48,9 @@
       });
     }) // {
       aarch64-linux = {
-        sunxi-fel = nixpkgs-unstable.legacyPackages.aarch64-linux.sunxi-tools;
+        sunxi-fel = nixpkgs-unstable.legacyPackages.aarch64-linux.sunxi-tools.overrideAttrs (old: {
+          meta = old.meta // { mainProgram = "sunxi-fel"; platforms = old.meta.platforms ++ [ system ]; };
+        });
         uboot-vendor = uboot.vendor;
         uboot-1gb = uboot.mainline-1gb;
         uboot-2gb = uboot.mainline-2gb;

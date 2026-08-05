@@ -11,12 +11,24 @@ NixOS modules for the Radxa Cubie A5E board:
 
 ## Quick start (pre-built image)
 
-Download the latest `main.raw.zst` from [Releases](https://github.com/patryk4815/nixos-cubie-a5e/releases) and flash to SD card:
+Download an SD card image from [Releases](https://github.com/patryk4815/nixos-cubie-a5e/releases):
+
+| File | U-Boot |
+|------|--------|
+| `cubie-a5e-mainline-1gb.raw.zst` | Mainline, **1GB** model |
+| `cubie-a5e-mainline-2gb.raw.zst` | Mainline, **2GB/4GB** models |
+| `cubie-a5e-vendor.raw.zst` | Radxa vendor U-Boot |
+| `cubie-a5e-spi.raw.zst` | No U-Boot on disk - for [booting from SPI NOR](#boot-from-spi-nor--nvme--usb) |
+
+Flash to SD card:
 
 ```bash
-zstdcat main.raw.zst | sudo dd of=/dev/sdX bs=4M status=progress
+zstdcat cubie-a5e-mainline-1gb.raw.zst | sudo dd of=/dev/sdX bs=4M status=progress
 sync
 ```
+
+> **Warning:** the 1GB and 2GB/4GB models use different DRAM chips with incompatible timings.
+> Flashing the wrong mainline variant will not boot.
 
 Default login: `root` / `nixos`
 
@@ -285,7 +297,7 @@ Default boot order: NVMe → USB → SD card (`mmc0`).
 ## Known issues
 
 - **PSCI SYSTEM_RESET not implemented** in vendor TF-A - `watchdog-reboot-helper` service crashes kernel on shutdown so hardware watchdog triggers reboot
-- **Only SD card / USB boot** - eMMC boot not tested
+- **eMMC boot not tested**
 
 ## Tested on
 

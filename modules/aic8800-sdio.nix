@@ -23,7 +23,8 @@ let
       sourceRoot = "source/src/SDIO/driver_fw/driver/aic8800";
 
       patchFlags = [ "-p6" ];
-      patches = [ ./aic8800-kernel-7.0.patch ];
+      patches = [ ./aic8800-kernel-7.0.patch ]
+        ++ lib.optionals (lib.versionAtLeast kernel.version "7.1") [ ./aic8800-kernel-7.1.patch ];
 
       nativeBuildInputs = kernel.moduleBuildDependencies ++ [ kmod ];
 
@@ -104,8 +105,12 @@ in
     hardware.firmware = [ aic8800-firmware ];
 
     # AIC8800 firmware path
+    # aicwf_dbg_level=1 -> LOGERROR only. The driver default also enables
+    # INFO/DEBUG/TRACE/FW, which floods dmesg. Tunable at runtime via
+    # /sys/module/aic8800_fdrv/parameters/aicwf_dbg_level
     boot.extraModprobeConfig = ''
       options aic8800_bsp_sdio aic_fw_path=/run/booted-system/firmware/aic8800/aic8800D80
+      options aic8800_fdrv_sdio aicwf_dbg_level=1
     '';
 
     # Bluetooth HCI over UART1

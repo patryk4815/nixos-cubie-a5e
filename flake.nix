@@ -3,13 +3,13 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
-    nixpkgs_25_11.url = "github:NixOS/nixpkgs/nixos-25.11";
     disko.url = "github:nix-community/disko";
   };
 
-  outputs = { self, nixpkgs, nixpkgs_25_11, disko, ... }: let
+  outputs = { self, nixpkgs, disko, ... }: let
     pkgs = nixpkgs.legacyPackages.aarch64-linux;
     nixpkgs-unstable = builtins.getFlake "github:NixOS/nixpkgs/104240a772428cc2e20d8fd86c9ddbb886bbaff2?narHash=sha256-D740uKsMbgsfK2oaDenJLLPIZfq7W0/g4KN/Fls8eKs%3D"; # 2026-08-03
+    nixpkgs_25_11 = builtins.getFlake "github:NixOS/nixpkgs/b6018f87da91d19d0ab4cf979885689b469cdd41?narHash=sha256-twXPFqFsrrY5r28Zh7Homgcp2gUMBgQ6WDS98Q/3xFI%3D"; # 2026-06-30
   in {
     nixosModules = {
       aic8800 = ./modules/aic8800-sdio.nix;
@@ -59,14 +59,14 @@
     };
 
     nixosConfigurations = let
-      mkCubieA5E = uboot: nixpkgs.lib.nixosSystem {
+      mkCubieA5E = { uboot ? "none" }: nixpkgs.lib.nixosSystem {
         system = "aarch64-linux";
         modules = [
           self.nixosModules.default
           ({ pkgs, ... }: {
             hardware.cubie-a5e.enable = true;
             hardware.cubie-a5e.uboot = uboot;
-            boot.kernelPackages = pkgs.linuxPackages_7_0;
+            boot.kernelPackages = pkgs.linuxPackages_7_1;
 
             users.users.root.initialPassword = "nixos";
             services.openssh = {
@@ -75,17 +75,17 @@
             };
             services.getty.autologinUser = "root";
 
-            environment.systemPackages = with pkgs; [ wpa_supplicant htop iproute2 nettools ];
+            environment.systemPackages = with pkgs; [ wpa_supplicant htop iproute2 nettools parted pciutils usbutils vim smartmontools mtdutils ];
 
             system.stateVersion = "26.05";
           })
         ];
       };
     in {
-      cubie-a5e-sd-vendor = mkCubieA5E "vendor";
-      cubie-a5e-sd-mainline-1gb = mkCubieA5E "mainline-1gb";
-      cubie-a5e-sd-mainline-2gb = mkCubieA5E "mainline-2gb+";
-      cubie-a5e-spi = mkCubieA5E "none";
+      cubie-a5e-sd-vendor = mkCubieA5E { uboot = "vendor"; };
+      cubie-a5e-sd-mainline-1gb = mkCubieA5E { uboot = "mainline-1gb"; };
+      cubie-a5e-sd-mainline-2gb = mkCubieA5E { uboot = "mainline-2gb+"; };
+      cubie-a5e-spi = mkCubieA5E { uboot = "none"; };
     };
   };
 }

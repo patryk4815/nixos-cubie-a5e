@@ -6,6 +6,18 @@ in
   options.hardware.cubie-a5e = {
     enable = lib.mkEnableOption "Radxa Cubie A5E board support";
 
+    combophy = lib.mkOption {
+      type = lib.types.enum [ "pcie" "usb3" ];
+      default = "pcie";
+      description = "Combo PHY mode: \"pcie\" for NVMe/M.2 (default), \"usb3\" for USB 3.0 SuperSpeed";
+    };
+
+    spi-nor = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable SPI0 and expose the SPI NOR chip as /dev/mtd0 (for reflashing U-Boot from Linux)";
+    };
+
     watchdog-reboot = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -36,9 +48,22 @@ in
         structuredExtraConfig = {
           PCIE_SUN55I_RC = lib.kernel.yes;
           AW_INNO_COMBOPHY = lib.kernel.yes;
+          PCI_MSI = lib.kernel.yes;
         };
       }
     ];
+
+    hardware.deviceTree.overlays =
+      # Combo PHY: switch to USB 3.0 mode (default is PCIe/NVMe from kernel patch)
+      lib.optionals (cfg.combophy == "usb3") [{
+        name = "cubie-a5e-usb3";
+        dtsFile = ./usb3-overlay.dts;
+      }]
+      # Expose the SPI NOR chip as /dev/mtd0 so it can be reflashed from Linux
+      ++ lib.optionals cfg.spi-nor [{
+        name = "cubie-a5e-spi-nor";
+        dtsFile = ./spi-nor-overlay.dts;
+      }];
 
     # Hardware watchdog for reliable reboot/shutdown detection
     systemd.settings.Manager = {

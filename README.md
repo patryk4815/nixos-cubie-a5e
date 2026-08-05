@@ -20,10 +20,15 @@ sync
 
 Default login: `root` / `nixos`
 
+Connect to WiFi:
+
+```bash
+wpa_supplicant -B -i wlan0 -c <(wpa_passphrase "SSID" "password")
+```
+
 The image is only 6 GB. After first boot, resize the partition to use the full SD card:
 
 ```bash
-nix-shell -p parted
 parted /dev/mmcblk0
 (parted) p
 (parted) resizepart 2 100%
@@ -46,7 +51,7 @@ Add to your `flake.nix` inputs:
 ```nix
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     cubie-a5e.url = "github:patryk4815/cubie-a5e";
   };
 
@@ -196,6 +201,24 @@ After reset the board boots from SPI NOR (`Trying to boot from sunxi SPI`).
 
 > **Note:** `sunxi-fel spiflash-write` is not yet supported for A523. The workaround above loads U-Boot via FEL into RAM and uses U-Boot's `sf` commands to flash.
 
+### Reflashing SPI NOR from a running system
+
+`hardware.cubie-a5e.spi-nor` (enabled by default) adds a DT overlay that enables SPI0 and
+exposes the flash chip as `/dev/mtd0`, so it can be rewritten without FEL mode:
+
+```bash
+cat /proc/mtd   # should list mtd0, 16 MiB
+
+wget https://github.com/patryk4815/nixos-cubie-a5e/releases/latest/download/spinor-1gb.img.zst
+zstd -d spinor-1gb.img.zst
+
+flashcp -v spinor-1gb.img /dev/mtd0   # erases, writes and verifies
+reboot
+```
+
+> **Warning:** if the board currently boots from SPI NOR, an interrupted write leaves it
+> unbootable - recovery then requires FEL mode. Booting from SD/NVMe while reflashing is safer.
+
 ## Hardware support status
 
 | Feature | Status | Notes |
@@ -206,8 +229,8 @@ After reset the board boots from SPI NOR (`Trying to boot from sunxi SPI`).
 | SD card | ✅ Working | Boot + rootfs |
 | CPU thermal sensor (THS0/THS1) | ✅ Working | Requires backported patches (see below), not yet in mainline |
 | USB 2.0 | ✅ Working | |
-| USB 3.0 | ⚠️ Partial | Missing xHCI DT nodes in mainline, port works at USB 2.0 speed |
-| M.2 slot (PCIe) | ✅ Working | PCIe Gen2 x1 via combo PHY, requires kernel patches (see below) |
+| USB 3.0 | ❌ Not working | Missing DWC3 (xHCI) DT nodes in mainline, combo PHY shared with PCIe |
+| M.2 slot (PCIe) | ✅ Working | PCIe Gen2 x1 via combo PHY (default), requires kernel patches (see below) |
 | HDMI | ❌ Not working | Requires display engine drivers not yet in mainline |
 | MIPI DSI | ❌ Not working | Missing mainline support/drivers |
 | MIPI CSI | ❌ Not working | Missing mainline support/drivers |
@@ -218,11 +241,21 @@ After reset the board boots from SPI NOR (`Trying to boot from sunxi SPI`).
 | eMMC | 🔘 Not tested | Likely works |
 
 
-## Boot from SPI NOR + NVMe
+## Boot from SPI NOR + NVMe / USB
 
-For booting from NVMe, flash U-Boot to SPI NOR and use the `cubie-a5e-spi` configuration (no U-Boot gap on disk, partition starts at sector 0).
+Flash U-Boot to SPI NOR first (see [SPI NOR flashing](#spi-nor-flashing)), then write the `cubie-a5e-spi` image to the target drive:
 
-See [SPI NOR flashing](#spi-nor-flashing) for download links and flashing instructions.
+```bash
+# NVMe
+zstdcat cubie-a5e-spi.raw.zst | sudo dd of=/dev/nvme0n1 bs=4M status=progress
+
+# USB drive
+zstdcat cubie-a5e-spi.raw.zst | sudo dd of=/dev/sdX bs=4M status=progress
+```
+
+The `cubie-a5e-spi` configuration has no U-Boot gap on disk (partition starts at sector 0).
+
+Default boot order: NVMe → USB → SD card (`mmc0`).
 
 ## Backported patches
 
@@ -241,6 +274,13 @@ See [SPI NOR flashing](#spi-nor-flashing) for download links and flashing instru
   Innosilicon combo PHY driver, Allwinner sunxi PCIe RC driver, and SoC/board DT nodes.
   Applied via `boot.kernelPatches` in `modules/cubie-a5e.nix` (patch files in
   `modules/patches/kernel/`). Automatically enabled with `hardware.cubie-a5e.enable = true`.
+  Includes a fix for MSI-X support: the Armbian 7.0 driver omits `MSI_FLAG_PCI_MSIX` from its
+  `msi_parent_ops.supported_flags`, so no MSI-X device domain can be created and MSI-X capable
+  devices such as NVMe fall back to legacy INTx - a single shared queue with frequent
+  `I/O tag ... timeout, completion polled` stalls (~30 s each, the `nvme_core.io_timeout`
+  default), which in turn drives btrfs read-only with `errno=-5`. The in-tree DesignWare host
+  (`pcie-designware-host.c`) lists this flag; sunxi does not. This bug is present in upstream
+  Armbian as of 2026-08.
 
 ## Known issues
 
@@ -249,5 +289,5 @@ See [SPI NOR flashing](#spi-nor-flashing) for download links and flashing instru
 
 ## Tested on
 
-- NixOS 26.05 + kernel 7.0
+- NixOS 26.05 + kernel 7.1 (also works with 7.0)
 - Radxa Cubie A5E with AIC8800D80 WiFi/BT chip

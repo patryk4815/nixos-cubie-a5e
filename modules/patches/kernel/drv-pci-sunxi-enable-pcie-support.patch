@@ -12,10 +12,10 @@ Signed-off-by: Marvin Wewer <mwewer37@proton.me>
  drivers/pci/pcie-sunxi/pcie-sunxi-dma.c  |  198 ++
  drivers/pci/pcie-sunxi/pcie-sunxi-dma.h  |  279 +++
  drivers/pci/pcie-sunxi/pcie-sunxi-plat.c | 1233 ++++++++++
- drivers/pci/pcie-sunxi/pcie-sunxi-rc.c   |  854 +++++++
+ drivers/pci/pcie-sunxi/pcie-sunxi-rc.c   |  858 +++++++
  drivers/pci/pcie-sunxi/pcie-sunxi.h      |  391 +++
  include/sunxi-gpio.h                     |  188 ++
- 10 files changed, 3179 insertions(+)
+ 10 files changed, 3183 insertions(+)
 
 diff --git a/drivers/pci/Kconfig b/drivers/pci/Kconfig
 index 111111111111..222222222222 100644
@@ -115,7 +115,8 @@ index 000000000000..111111111111
 +#include <linux/miscdevice.h>
 +#include <linux/of_address.h>
 +#include <linux/of_device.h>
-+#include <linux/of_gpio.h>
++#include <linux/of.h>
++#include <linux/gpio/consumer.h>
 +#include <linux/of_pci.h>
 +#include <linux/platform_device.h>
 +#include <linux/poll.h>
@@ -604,7 +605,8 @@ index 000000000000..111111111111
 +#include <linux/interrupt.h>
 +#include <linux/kernel.h>
 +#include <linux/module.h>
-+#include <linux/of_gpio.h>
++#include <linux/of.h>
++#include <linux/gpio/consumer.h>
 +#include <linux/of_device.h>
 +#include <linux/pci.h>
 +#include <linux/platform_device.h>
@@ -1822,7 +1824,7 @@ new file mode 100644
 index 000000000000..111111111111
 --- /dev/null
 +++ b/drivers/pci/pcie-sunxi/pcie-sunxi-rc.c
-@@ -0,0 +1,854 @@
+@@ -0,0 +1,858 @@
 +/* SPDX-License-Identifier: GPL-2.0-or-later */
 +/* Copyright(c) 2020 - 2023 Allwinner Technology Co.,Ltd. All rights reserved. */
 +// SPDX_License-Identifier: GPL-2.0
@@ -1997,6 +1999,7 @@ index 000000000000..111111111111
 +#define SUNXI_PCIE_MSI_FLAGS_REQUIRED (MSI_FLAG_USE_DEF_DOM_OPS		| \
 +				   MSI_FLAG_USE_DEF_CHIP_OPS)
 +#define SUNXI_PCIE_MSI_FLAGS_SUPPORTED (MSI_FLAG_MULTI_PCI_MSI		| \
++				   MSI_FLAG_PCI_MSIX			| \
 +				   MSI_GENERIC_FLAGS_MASK)
 +
 +static const struct msi_parent_ops sunxi_pcie_msi_parent_ops = {
@@ -2342,6 +2345,9 @@ index 000000000000..111111111111
 +
 +	bridge->sysdata = pp;
 +	bridge->ops = &sunxi_pcie_ops;
++
++	if (pp->irq_domain)
++		dev_set_msi_domain(&bridge->dev, pp->irq_domain);
 +
 +	ret = pci_host_probe(bridge);
 +

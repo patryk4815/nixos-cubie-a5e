@@ -35,6 +35,13 @@ let
       CONFIG_USB_STORAGE=y
       CONFIG_LOGLEVEL=7
     '' + extraConfig;
+    preBuild = ''
+      cat >> board/sunxi/sunxi.env <<'EOF'
+      bootcmd_nvme0=nvme scan; sysboot nvme 0:1 any 0x4fc00000 /extlinux/extlinux.conf
+      bootcmd_usb0=usb reset; sysboot usb 0:1 any 0x4fc00000 /extlinux/extlinux.conf
+      boot_targets=nvme0 usb0 mmc0
+      EOF
+    '';
     filesToInstall = [ "u-boot-sunxi-with-spl.bin" ];
   };
 

@@ -56,6 +56,10 @@ in
                 type = "filesystem";
                 format = "ext4";
                 mountpoint = "/boot";
+                # /boot is only written during nixos-rebuild, so flushing
+                # immediately costs nothing and narrows the window for a torn
+                # kernel/initrd write on power loss.
+                mountOptions = [ "sync" ];
               };
             } // lib.optionalAttrs (config.hardware.cubie-a5e.uboot != "none") {
               start = "32768";

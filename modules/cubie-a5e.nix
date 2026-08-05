@@ -16,10 +16,21 @@ in
   config = lib.mkIf cfg.enable {
     hardware.aic8800.enable = true;
 
-    hardware.deviceTree.overlays = [{
-      name = "cubie-a5e-mmc-workaround";
-      dtsFile = ./mmc-workaround-overlay.dts;
-    }];
+    boot.kernelPatches = [
+      { name = "a523-clk-usb3-ref"; patch = ./patches/kernel/drv-clk-sunxi-ng-fix-clock-handling-for-ccu-sun55i-a523.patch; }
+      { name = "a523-combophy"; patch = ./patches/kernel/drv-phy-allwinner-add-pcie-usb3-driver.patch; }
+      { name = "a523-pcie-rc"; patch = ./patches/kernel/drv-pci-sunxi-enable-pcie-support.patch; }
+      { name = "a523-pcie-dts"; patch = ./patches/kernel/arm64-dts-sun55i-dtsi-add-iommu-usbc-pcie-combophy-nodes.patch; }
+      { name = "a523-cubie-pcie-dts"; patch = ./patches/kernel/arm64-dts-sun55i-a527-cubie-a5e-enable-usbc-pcie-combophy.patch; }
+      {
+        name = "a523-pcie-config";
+        patch = null;
+        structuredExtraConfig = {
+          PCIE_SUN55I_RC = lib.kernel.yes;
+          AW_INNO_COMBOPHY = lib.kernel.yes;
+        };
+      }
+    ];
 
     # Hardware watchdog for reliable reboot/shutdown detection
     systemd.settings.Manager = {

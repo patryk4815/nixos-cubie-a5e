@@ -123,13 +123,20 @@ cubie-a5e.nixosModules.disko
 
 ## Disk layout
 
-Only **SD card** (`/dev/mmcblk0`) boot is supported. The image uses GPT partitioning:
+Booting from **SD card** (`/dev/mmcblk0`), **USB** or **NVMe** is supported. The image uses
+GPT partitioning.
+
+When U-Boot lives on the disk itself (`hardware.cubie-a5e.uboot` other than `"none"`), the
+first 16 MB are reserved for it:
 
 | Offset | Content |
 |--------|---------|
 | 128 KB (sector 256) | U-Boot boot0 (SPL) |
 | 12 MB (sector 24576) | U-Boot boot_package (U-Boot + ATF) |
 | 16 MB (sector 32768) | First GPT partition |
+
+With `uboot = "none"` (the `cubie-a5e-spi` image, U-Boot in SPI NOR) no gap is reserved and
+partitioning starts at the front of the disk.
 
 Partitions:
 
@@ -143,7 +150,7 @@ LVM volume group `root_vg` with single logical volume `root` formatted as **btrf
 
 ## U-Boot
 
-Three variants available via `hardware.cubie-a5e.uboot`:
+Four variants available via `hardware.cubie-a5e.uboot`:
 
 | Variant | Description |
 |---------|-------------|

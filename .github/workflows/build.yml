@@ -11,12 +11,14 @@ jobs:
     strategy:
       matrix:
         variant:
-          - name: cubie-a5e
+          - name: cubie-a5e-sd-vendor
             image: cubie-a5e-vendor
-          - name: cubie-a5e-mainline-1gb
+          - name: cubie-a5e-sd-mainline-1gb
             image: cubie-a5e-mainline-1gb
-          - name: cubie-a5e-mainline-2gb
+          - name: cubie-a5e-sd-mainline-2gb
             image: cubie-a5e-mainline-2gb
+          - name: cubie-a5e-spi
+            image: cubie-a5e-spi
 
     steps:
       - uses: actions/checkout@v4
@@ -37,11 +39,37 @@ jobs:
         with:
           files: ${{ matrix.variant.image }}.raw.zst
 
+  uboot:
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        variant:
+          - pkg: uboot-vendor
+          - pkg: uboot-1gb
+          - pkg: uboot-2gb
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Build U-Boot
+        run: nix build '.#${{ matrix.variant.pkg }}' -L
+
+      - name: Compress image
+        run: zstd -T0 result/u-boot-sunxi-with-spl.bin -o ${{ matrix.variant.pkg }}.bin.zst
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.variant.pkg }}.bin.zst
+
   spinor:
     runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         variant:
+          - pkg: spinor-vendor
           - pkg: spinor-1gb
           - pkg: spinor-2gb
 

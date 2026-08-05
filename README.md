@@ -133,6 +133,7 @@ Three variants available via `hardware.cubie-a5e.uboot`:
 | `"vendor"` (default) | Radxa vendor U-Boot (`u-boot-aw2501` package) |
 | `"mainline-1gb"` | Mainline U-Boot for **1GB** model (LPDDR4, 1.1V VDDQ) + SPI NOR + PCIe/NVMe |
 | `"mainline-2gb+"` | Mainline U-Boot for **2GB/4GB** models (LPDDR4x, 0.6V VDDQ) + SPI NOR + PCIe/NVMe |
+| `"none"` | No U-Boot on disk — use when U-Boot is flashed to SPI NOR |
 
 Mainline U-Boot uses TF-A from [jernejsk/arm-trusted-firmware](https://github.com/jernejsk/arm-trusted-firmware) (branch `a523-v4`).
 The 1GB variant applies [DRAM timing patch](https://gist.github.com/apritzel/01b5afcae189cf3c34c4256dafa3f60d) from Andre Przywara (not yet upstream).
@@ -142,27 +143,44 @@ PCIe/NVMe support uses patches from [Armbian](https://github.com/armbian/build) 
 
 ## SPI NOR flashing
 
-U-Boot can be flashed to SPI NOR via USB FEL mode. Requires `sunxi-tools` built from master (nixpkgs has it).
-
-Build the SPI NOR image:
+U-Boot can be flashed to SPI NOR via USB FEL mode. This flake provides `sunxi-fel` for all platforms (Linux, macOS):
 
 ```bash
-nix build .#spinor-1gb   # or .#spinor-2gb
+nix run .#sunxi-fel -- ver
+# or install into profile:
+nix profile install .#sunxi-fel
+```
+
+Download the SPI NOR and U-Boot images from [Releases](https://github.com/patryk4815/nixos-cubie-a5e/releases):
+
+```bash
+# 1GB model
+wget https://github.com/patryk4815/nixos-cubie-a5e/releases/latest/download/spinor-1gb.img.zst
+wget https://github.com/patryk4815/nixos-cubie-a5e/releases/latest/download/uboot-1gb.bin.zst
+zstd -d spinor-1gb.img.zst && zstd -d uboot-1gb.bin.zst
+
+# 2GB/4GB model: use spinor-2gb.img.zst + uboot-2gb.bin.zst
+```
+
+Or build from source:
+
+```bash
+nix build .#spinor-1gb   # or .#spinor-2gb, .#spinor-vendor
 nix build .#uboot-1gb    # just the U-Boot binary
 ```
 
 Enter FEL mode by powering the board via USB-C without an SD card. Verify with:
 
 ```bash
-sunxi-fel ver
+nix run .#sunxi-fel -- ver
 # AWUSBFEX soc=00001890(A523) ...
 ```
 
 Load U-Boot into RAM, write the SPI image to DRAM, and start U-Boot:
 
 ```bash
-sunxi-fel spl ./result/u-boot-sunxi-with-spl.bin \
-  write 0x50000000 ./1gb-spinor.img \
+nix run .#sunxi-fel -- spl uboot-1gb.bin \
+  write 0x50000000 spinor-1gb.img \
   exe 0x4a000000
 ```
 
@@ -188,8 +206,8 @@ After reset the board boots from SPI NOR (`Trying to boot from sunxi SPI`).
 | SD card | ✅ Working | Boot + rootfs |
 | CPU thermal sensor (THS0/THS1) | ✅ Working | Requires backported patches (see below), not yet in mainline |
 | USB 2.0 | ✅ Working | |
-| USB 3.0 | ❌ Not working | Missing xHCI DT nodes in mainline, port falls back to USB 2.0 speed |
-| M.2 slot (PCIe) | ✅ Working | PCIe Gen2 x1 via combo PHY, NVMe detected in U-Boot |
+| USB 3.0 | ⚠️ Partial | Missing xHCI DT nodes in mainline, port works at USB 2.0 speed |
+| M.2 slot (PCIe) | ✅ Working | PCIe Gen2 x1 via combo PHY, requires kernel patches (see below) |
 | HDMI | ❌ Not working | Requires display engine drivers not yet in mainline |
 | MIPI DSI | ❌ Not working | Missing mainline support/drivers |
 | MIPI CSI | ❌ Not working | Missing mainline support/drivers |
@@ -204,14 +222,7 @@ After reset the board boots from SPI NOR (`Trying to boot from sunxi SPI`).
 
 For booting from NVMe, flash U-Boot to SPI NOR and use the `cubie-a5e-spi` configuration (no U-Boot gap on disk, partition starts at sector 0).
 
-Build the SPI NOR image and U-Boot binary:
-
-```bash
-nix build .#spinor-1gb   # or .#spinor-2gb, .#spinor-vendor
-nix build .#uboot-1gb    # just the U-Boot binary
-```
-
-See [SPI NOR flashing](#spi-nor-flashing) for flashing instructions.
+See [SPI NOR flashing](#spi-nor-flashing) for download links and flashing instructions.
 
 ## Backported patches
 
@@ -220,14 +231,21 @@ See [SPI NOR flashing](#spi-nor-flashing) for flashing instructions.
   static, non-updating temperature. This is fixed by backporting the not-yet-merged upstream
   series ["\[PATCH v5 0/5\] Allwinner: A523: add support for A523 THS0/1 controllers"](https://patchew.org/linux/20260704171411.1413349-1-iuncuim@gmail.com/)
   by Mikhail Kalashnikov, applied via `boot.kernelPatches` in `modules/cubie-a5e.nix`
-  (patch files in `modules/patches/`). This is automatically enabled whenever
+  (patch files in `modules/patches/kernel/`). This is automatically enabled whenever
   `hardware.cubie-a5e.enable = true` and can be dropped once nixpkgs' kernel includes the
   upstream merge.
+
+- **PCIe + combo PHY (NVMe/M.2)** - the mainline kernel does not yet include PCIe or combo PHY
+  support for A523/A527. This is fixed by applying patches from
+  [Armbian](https://github.com/armbian/build) (by Marvin Wewer): CLK_USB3_REF clock fix,
+  Innosilicon combo PHY driver, Allwinner sunxi PCIe RC driver, and SoC/board DT nodes.
+  Applied via `boot.kernelPatches` in `modules/cubie-a5e.nix` (patch files in
+  `modules/patches/kernel/`). Automatically enabled with `hardware.cubie-a5e.enable = true`.
 
 ## Known issues
 
 - **PSCI SYSTEM_RESET not implemented** in vendor TF-A - `watchdog-reboot-helper` service crashes kernel on shutdown so hardware watchdog triggers reboot
-- **Only SD card boot** - eMMC/USB boot not tested
+- **Only SD card / USB boot** - eMMC boot not tested
 
 ## Tested on
 

@@ -43,7 +43,9 @@
       uboot = import ./modules/uboot.nix { inherit pkgs; };
       forAllSystems = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
     in forAllSystems (system: {
-      sunxi-fel = nixpkgs-unstable.legacyPackages.${system}.sunxi-tools;
+      sunxi-fel = nixpkgs-unstable.legacyPackages.${system}.sunxi-tools.overrideAttrs (old: {
+        meta = old.meta // { mainProgram = "sunxi-fel"; platforms = old.meta.platforms ++ [ system ]; };
+      });
     }) // {
       aarch64-linux = {
         sunxi-fel = nixpkgs-unstable.legacyPackages.aarch64-linux.sunxi-tools;

@@ -245,7 +245,7 @@ reboot
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| WiFi 6 (AIC8800D80 SDIO) | ✅ Working | 2.4 GHz only, out-of-tree driver |
+| WiFi 6 (AIC8800D80 SDIO) | ✅ Working | 2.4 GHz & 5 GHz, out-of-tree driver |
 | Bluetooth 5.4 (AIC8800D80 UART) | ✅ Working | HCI over UART1, out-of-tree driver, hciattach service |
 | Ethernet (RJ45 x2) | ✅ Working | Both GbE ports |
 | SD card | ✅ Working | Boot + rootfs |

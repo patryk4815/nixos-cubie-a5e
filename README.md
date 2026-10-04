@@ -91,6 +91,9 @@ nix build '.#nixosConfigurations.cubie-a5e-sd-vendor.config.system.build.diskoIm
 # Mainline U-Boot - 1GB model (LPDDR4)
 nix build '.#nixosConfigurations.cubie-a5e-sd-mainline-1gb.config.system.build.diskoImagesScript' -L
 
+# Mainline U-Boot - 1GB model, USB 3.0 instead of PCIe/NVMe
+nix build '.#nixosConfigurations.cubie-a5e-sd-mainline-1gb-usb3.config.system.build.diskoImagesScript' -L
+
 # Mainline U-Boot - 2GB/4GB model (LPDDR4x)
 nix build '.#nixosConfigurations.cubie-a5e-sd-mainline-2gb.config.system.build.diskoImagesScript' -L
 ```
@@ -248,7 +251,7 @@ reboot
 | SD card | ✅ Working | Boot + rootfs |
 | CPU thermal sensor (THS0/THS1) | ✅ Working | Requires backported patches (see below), not yet in mainline |
 | USB 2.0 | ✅ Working | |
-| USB 3.0 | ❌ Not working | Missing DWC3 (xHCI) DT nodes in mainline, combo PHY shared with PCIe |
+| USB 3.0 | ✅ Working | `hardware.cubie-a5e.combophy = "usb3"` (disables M.2/PCIe, shared combo PHY) |
 | M.2 slot (PCIe) | ✅ Working | PCIe Gen2 x1 via combo PHY (default), requires kernel patches (see below) |
 | HDMI | ❌ Not working | Requires display engine drivers not yet in mainline |
 | MIPI DSI | ❌ Not working | Missing mainline support/drivers |

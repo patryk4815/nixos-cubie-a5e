@@ -42,6 +42,12 @@ in
       { name = "a523-pcie-rc"; patch = ./patches/kernel/drv-pci-sunxi-enable-pcie-support.patch; }
       { name = "a523-pcie-dts"; patch = ./patches/kernel/arm64-dts-sun55i-dtsi-add-iommu-usbc-pcie-combophy-nodes.patch; }
       { name = "a523-cubie-pcie-dts"; patch = ./patches/kernel/arm64-dts-sun55i-a527-cubie-a5e-enable-usbc-pcie-combophy.patch; }
+      # USB 3.0 (DWC3/xHCI) on the combo PHY. Clock ids/DT node follow the
+      # unmerged upstream series by Mikhail Kalashnikov (Aug 2025); the DWC3
+      # node is a bare snps,dwc3; the usb3 overlay adds the third USB2 PHY (pmu2).
+      { name = "a523-usb3-clks"; patch = ./patches/kernel/a523-usb3-clks.patch; }
+      { name = "a523-combophy-bootloader-fix"; patch = ./patches/kernel/a523-combophy-bootloader-fix.patch; }
+      { name = "a523-dwc3-dts"; patch = ./patches/kernel/a523-dwc3-dts.patch; }
       {
         name = "a523-pcie-config";
         patch = null;

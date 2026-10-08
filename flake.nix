@@ -75,13 +75,14 @@
     };
 
     nixosConfigurations = let
-      mkCubieA5E = { uboot ? "none" }: nixpkgs.lib.nixosSystem {
+      mkCubieA5E = { uboot ? "none", combophy ? "pcie" }: nixpkgs.lib.nixosSystem {
         system = "aarch64-linux";
         modules = [
           self.nixosModules.default
           ({ pkgs, lib, ... }: {
             hardware.cubie-a5e.enable = true;
             hardware.cubie-a5e.uboot = uboot;
+            hardware.cubie-a5e.combophy = combophy;
             boot.kernelPackages = pkgs.linuxPackages_7_1;
 
             # Serial console. Without console= params the kernel says nothing
@@ -116,6 +117,7 @@
     in {
       cubie-a5e-sd-vendor = mkCubieA5E { uboot = "vendor"; };
       cubie-a5e-sd-mainline-1gb = mkCubieA5E { uboot = "mainline-1gb"; };
+      cubie-a5e-sd-mainline-1gb-usb3 = mkCubieA5E { uboot = "mainline-1gb"; combophy = "usb3"; };
       cubie-a5e-sd-mainline-2gb = mkCubieA5E { uboot = "mainline-2gb+"; };
       cubie-a5e-spi = mkCubieA5E { uboot = "none"; };
     };
